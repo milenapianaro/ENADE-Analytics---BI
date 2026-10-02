@@ -1,0 +1,232 @@
+<style>
+  /* RESET & ESTILO EDITORIAL ENADE */
+  * {
+    box-sizing: border-box;
+  }
+  body {
+    font-family: Arial, Helvetica, sans-serif;
+    color: #111;
+    font-size: 0.9em;
+    background-color: #f4f4f4;
+    margin: 0;
+    padding: 20px 10px;
+    line-height: 1.5;
+  }
+
+  .container-pagina {
+    max-width: 850px;
+    margin: 0 auto;
+    background: #ffffff;
+    padding: 50px 60px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+    border-radius: 2px;
+  }
+
+  .tela { display: none; }
+  .tela.ativa { display: block; }
+
+  /* CABEÇALHO DA QUESTÃO */
+  .questao-header {
+    display: flex;
+    align-items: center;
+    margin-top: 35px;
+    margin-bottom: 20px;
+  }
+  .questao-header:first-child {
+    margin-top: 0;
+  }
+  .questao-titulo {
+    font-family: Arial, Helvetica, sans-serif;
+    font-weight: bold;
+    font-size: 1.1em;
+    letter-spacing: 0.5px;
+    white-space: nowrap;
+    margin-right: 12px;
+  }
+  .questao-linha {
+    flex-grow: 1;
+    height: 2px;
+    background-color: #333;
+  }
+
+  /* ESTRUTURA DO CONTEÚDO */
+  .pergunta {
+    margin-bottom: 50px;
+  }
+  .texto-apoio {
+    font-size: 1em;
+    text-align: justify;
+    margin-bottom: 12px;
+  }
+  .texto-apoio cite, .texto-referencia {
+    display: block;
+    font-size: 0.85em;
+    color: #333;
+    text-align: right;
+    margin-top: 6px;
+    margin-bottom: 18px;
+    font-style: italic;
+  }
+  .comando-questao {
+    font-size: 1em;
+    margin-bottom: 20px;
+    text-align: justify;
+  }
+
+  /* Converte a numeração de listas ordenadas para romano */
+  .comando-questao ol {
+    list-style-type: upper-roman;
+    padding-left: 20px;
+  }
+  /* ASSERTIVAS (I, II, III...) */
+  .assertivas-lista {
+    list-style-type: none;
+    padding-left: 15px;
+    margin-bottom: 20px;
+  }
+  .assertivas-lista li {
+    margin-bottom: 8px;
+    text-align: justify;
+  }
+  .porque {
+    text-align: center;
+    margin: 16px 0;
+    font-weight: bold;
+  }
+
+  /* ALTERNATIVAS COM CÍRCULOS (Ⓐ, Ⓑ, Ⓒ...) */
+  .alternativas-container {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 15px;
+  }
+  .alternativa {
+    display: flex;
+    align-items: flex-start;
+    cursor: pointer;
+    font-size: 0.98em;
+    line-height: 1.4;
+    text-align: justify;
+    padding: 4px 0;
+    transition: background 0.2s;
+  }
+  .alternativa:hover {
+    background-color: #f9f9f9;
+  }
+  .alternativa input[type="radio"] {
+    display: none;
+  }
+  
+  .circulo-letra {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    min-width: 22px;
+    border-radius: 50%;
+    background-color: #000;
+    color: #fff;
+    font-family: Arial, sans-serif;
+    font-weight: bold;
+    font-size: 0.75em;
+    margin-right: 12px;
+    margin-top: 2px;
+  }
+  .alternativa input[type="radio"]:checked + .circulo-letra {
+    background-color: #1a73e8;
+    box-shadow: 0 0 0 2px #1a73e8;
+  }
+
+  /* IMAGENS DA PROVA */
+  .imagem-container {
+    text-align: center;
+    margin: 15px 0;
+  }
+  .imagem-container img {
+    max-width: 100%;
+    height: auto;
+  }
+
+  /* BOTÕES E CONTROLES */
+  .btn {
+    font-family: Arial, sans-serif;
+    padding: 12px 30px;
+    background: #222;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    font-size: 0.95em;
+    font-weight: bold;
+    cursor: pointer;
+    letter-spacing: 0.5px;
+  }
+  .btn:hover { background: #444; }
+  .btn:disabled { background: #ccc; cursor: not-allowed; }
+
+  #termo {
+    background: #fafafa;
+    border: 1px solid #eee;
+    padding: 25px;
+    margin-bottom: 25px;
+    font-family: Arial, sans-serif;
+  }
+  #status {
+    margin-top: 20px;
+    padding: 12px;
+    border-radius: 4px;
+    background: #e8f5e9;
+    color: #2e7d32;
+    display: none;
+    font-family: Arial, sans-serif;
+    text-align: center;
+  }
+  #status.erro { background: #ffebee; color: #c62828; }
+  
+  .carregando { text-align: center; padding: 40px; font-family: Arial, sans-serif; }
+  .spinner {
+    border: 3px solid #f3f3f3;
+    border-top: 3px solid #222;
+    border-radius: 50%;
+    width: 36px;
+    height: 36px;
+    animation: spin 0.8s linear infinite;
+    margin: 0 auto 15px;
+  }
+  @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+  .footer-actions {
+    text-align: center;
+    margin-top: 40px;
+    padding-top: 20px;
+    border-top: 1px solid #ddd;
+  }
+  .contador-geral {
+    text-align: center;
+    margin: 15px 0;
+    font-weight: bold;
+    font-family: Arial, sans-serif;
+    font-size: 0.95em;
+    color: #555;
+  }
+
+  .nav-buttons {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 20px;
+  }
+  .btn-secondary {
+    background: #5f6368;
+  }
+  .btn-secondary:hover {
+    background: #3c4043;
+  }
+  #tela-revisao .pergunta {
+    margin-bottom: 30px;
+  }
+  #tela-resultados .pergunta {
+    border-left: 6px solid #ccc;
+    padding-left: 10px;
+  }
+</style>

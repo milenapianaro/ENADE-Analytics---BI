@@ -1,0 +1,634 @@
+<script>
+// ============================================================
+// ARQUIVO: javascript.html
+// DESCRIÇÃO: Lógica de front-end com navegação uma por vez,
+//            revisão, feedback visual e coleta de tempo por pergunta.
+// ============================================================
+
+// ============================================================
+// MÓDULO 1: ESTADO GLOBAL
+// ============================================================
+var questoes = [];
+var respostas = {};           // chave: idPergunta, valor: { alternativa, tempoFinal, tempoInicio }
+var totalPerguntas = 0;
+var perguntaAtual = 0;
+var periodoSelecionado = '';
+var idAluno = '';
+var tempoInicioGlobal = null;
+var dataSimulado = '';   // Data em que o simulado foi iniciado
+var modo = 'perguntas';       // 'perguntas' | 'revisao' | 'resultados'
+
+// ============================================================
+// MÓDULO 2: EVENTOS DO TCLE
+// ============================================================
+document.getElementById('aceite').addEventListener('change', function() {
+  document.getElementById('btn-iniciar').disabled = !this.checked;
+  document.getElementById('erro-termo').style.display = 'none';
+});
+
+document.getElementById('btn-iniciar').addEventListener('click', function() {
+  var checkbox = document.getElementById('aceite');
+  var divErro = document.getElementById('erro-termo');
+  var selectPeriodo = document.getElementById('periodo');
+  periodoSelecionado = selectPeriodo.value;
+
+  if (!periodoSelecionado) {
+    divErro.innerText = 'Selecione seu período atual.';
+    divErro.style.display = 'block';
+    return;
+  }
+  if (!checkbox.checked) {
+    divErro.innerText = 'Você deve concordar com os termos para continuar.';
+    divErro.style.display = 'block';
+    return;
+  }
+
+  mostrarTela('tela-carregando');
+
+  if (typeof google === 'undefined' || !google.script || !google.script.run) {
+    mostrarErroTermo('Erro: Ambiente do Google Apps Script não detectado.');
+    return;
+  }
+
+  google.script.run
+    .withSuccessHandler(function(questoesRecebidas) {
+      if (questoesRecebidas && questoesRecebidas.length > 0) {
+        questoes = questoesRecebidas;
+        totalPerguntas = questoes.length;
+        idAluno = 'A' + Date.now().toString(36) + Math.random().toString(36).substr(2, 4);
+        tempoInicioGlobal = Date.now();
+        dataSimulado = new Date().toISOString().slice(0, 10); // formato: "2026-09-28"
+        perguntaAtual = 0;
+        mostrarTela('tela-perguntas');
+        exibirPergunta(perguntaAtual);
+      } else {
+        mostrarErroTermo('Nenhuma questão foi encontrada.');
+      }
+    })
+    .withFailureHandler(function(err) {
+      mostrarErroTermo('Erro ao carregar perguntas: ' + (err.message || err));
+    })
+    .getRandomQuestions(10); // <= ALTERE AQUI para .getAllQuestions() se quiser todas
+});
+
+// ============================================================
+// MÓDULO 3: NAVEGAÇÃO ENTRE PERGUNTAS
+// ============================================================
+document.getElementById('btn-anterior').addEventListener('click', function() {
+  if (perguntaAtual > 0) {
+    perguntaAtual--;
+    exibirPergunta(perguntaAtual);
+  }
+});
+
+// O botão 'btn-proximo' terá seu comportamento definido dinamicamente em exibirPergunta
+// Removemos o event listener fixo para evitar conflitos.
+
+// ============================================================
+// MÓDULO 4: RENDERIZAÇÃO DE UMA PERGUNTA (POR VEZ)
+// ============================================================
+function exibirPergunta(index) {
+  // Rola para o topo
+  window.scrollTo(0, 0);
+
+  var container = document.getElementById('pergunta-container');
+  container.innerHTML = '';
+  var q = questoes[index];
+
+  // Se ainda não tiver tempo de início para esta pergunta, registra agora
+  if (!respostas[q.id] || !respostas[q.id].tempoInicio) {
+    if (!respostas[q.id]) respostas[q.id] = {};
+    respostas[q.id].tempoInicio = Date.now();
+  }
+
+  var div = document.createElement('div');
+  div.className = 'pergunta';
+
+  // Cabeçalho
+  var header = document.createElement('div');
+  header.className = 'questao-header';
+  var numFormatado = (index + 1) < 10 ? '0' + (index + 1) : (index + 1);
+  header.innerHTML = '<span class="questao-titulo">QUESTÃO ' + numFormatado + '</span><div class="questao-linha"></div>';
+  div.appendChild(header);
+
+  // Textos de apoio
+  var apoios = (q.conteudo && q.conteudo.textos_apoio) ? q.conteudo.textos_apoio : [];
+  if (Array.isArray(apoios) && apoios.length > 0) {
+    apoios.forEach(function(item) {
+      if (item.tipo === 'texto') {
+        var p = document.createElement('div');
+        p.className = 'texto-apoio';
+        p.innerHTML = item.conteudo || '';
+        div.appendChild(p);
+        if (item.referencia && item.referencia.trim() !== '') {
+          var ref = document.createElement('div');
+          ref.className = 'texto-referencia';
+          ref.innerHTML = item.referencia;
+          div.appendChild(ref);
+        }
+      } else if (item.tipo === 'imagem') {
+        var imgDiv = document.createElement('div');
+        imgDiv.className = 'imagem-container';
+        if (item.url && item.url.trim() !== '') {
+          var img = document.createElement('img');
+          img.src = item.url;
+          img.alt = item.descricao || 'Imagem';
+          imgDiv.appendChild(img);
+        }
+        div.appendChild(imgDiv);
+      }
+    });
+  }
+
+  // Comando
+  var comando = (q.conteudo && q.conteudo.comando) ? q.conteudo.comando : '';
+  if (comando.trim() !== '') {
+    var cmdDiv = document.createElement('div');
+    cmdDiv.className = 'comando-questao';
+    cmdDiv.innerHTML = comando;
+    div.appendChild(cmdDiv);
+  }
+
+  // Assertivas (se houver)
+  var assertivas = (q.conteudo && q.conteudo.assertivas) ? q.conteudo.assertivas : {};
+  var chavesAssertivas = Object.keys(assertivas);
+  if (chavesAssertivas.length > 0) {
+    var ul = document.createElement('ul');
+    ul.className = 'assertivas-lista';
+    chavesAssertivas.forEach(function(chave) {
+      var li = document.createElement('li');
+      li.innerHTML = '<strong>' + chave + '.</strong> ' + assertivas[chave];
+      ul.appendChild(li);
+    });
+    div.appendChild(ul);
+  }
+
+  // Alternativas com radio
+  var alternativas = (q.conteudo && q.conteudo.alternativas) ? q.conteudo.alternativas : {};
+  var chavesAlt = Object.keys(alternativas);
+  var altsContainer = document.createElement('div');
+  altsContainer.className = 'alternativas-container';
+
+  chavesAlt.forEach(function(letra) {
+    var label = document.createElement('label');
+    label.className = 'alternativa';
+
+    var radio = document.createElement('input');
+    radio.type = 'radio';
+    radio.name = 'questao_' + q.id;
+    radio.value = letra;
+
+    // Restaura resposta anterior
+    if (respostas[q.id] && respostas[q.id].alternativa === letra) {
+      radio.checked = true;
+    }
+
+    radio.addEventListener('change', function() {
+      var tempoFinal = Date.now();
+      respostas[q.id] = {
+        alternativa: letra,
+        tempoInicio: respostas[q.id] ? respostas[q.id].tempoInicio : tempoFinal,
+        tempoFinal: tempoFinal
+      };
+      atualizarContador();
+    });
+
+    var circulo = document.createElement('span');
+    circulo.className = 'circulo-letra';
+    circulo.innerText = letra.toUpperCase();
+
+    var textoSpan = document.createElement('span');
+    textoSpan.innerHTML = alternativas[letra];
+
+    label.appendChild(radio);
+    label.appendChild(circulo);
+    label.appendChild(textoSpan);
+    altsContainer.appendChild(label);
+  });
+
+  div.appendChild(altsContainer);
+  container.appendChild(div);
+
+  // Configura botão "Próxima" / "Finalizar"
+  var btnProximo = document.getElementById('btn-proximo');
+  if (index === totalPerguntas - 1) {
+    btnProximo.textContent = '✅ Finalizar';
+    btnProximo.onclick = function() {
+      modo = 'revisao';
+      mostrarTela('tela-revisao');
+      exibirRevisao();
+    };
+  } else {
+    btnProximo.textContent = 'Próxima ▶';
+    btnProximo.onclick = function() {
+      if (perguntaAtual < totalPerguntas - 1) {
+        perguntaAtual++;
+        exibirPergunta(perguntaAtual);
+      }
+    };
+  }
+
+  // Botão "Anterior"
+  var btnAnterior = document.getElementById('btn-anterior');
+  if (index > 0) {
+    btnAnterior.style.display = 'inline-block';
+  } else {
+    btnAnterior.style.display = 'none';
+    // 🔹 Quando não há anterior, alinha o "Próxima" à direita
+    btnProximo.style.marginLeft = 'auto';
+  }
+
+  // Contador
+  document.getElementById('contador-pergunta').textContent = 'Pergunta ' + (index + 1) + ' de ' + totalPerguntas;
+
+  atualizarContador();
+}
+
+// ============================================================
+// MÓDULO 5: REVISÃO (TODAS AS PERGUNTAS)
+// ============================================================
+function exibirRevisao() {
+  var container = document.getElementById('revisao-container');
+  container.innerHTML = '';
+
+  questoes.forEach(function(q, index) {
+    var div = document.createElement('div');
+    div.className = 'pergunta';
+    div.style.marginBottom = '30px';
+
+    // Cabeçalho...
+    var header = document.createElement('div');
+    header.className = 'questao-header';
+    var numFormatado = (index + 1) < 10 ? '0' + (index + 1) : (index + 1);
+    header.innerHTML = '<span class="questao-titulo">QUESTÃO ' + numFormatado + '</span><div class="questao-linha"></div>';
+    div.appendChild(header);
+
+    // ============================================================
+    // 🔹 NOVO: Textos de apoio (opcional, mas útil para revisão)
+    // ============================================================
+    var apoios = (q.conteudo && q.conteudo.textos_apoio) ? q.conteudo.textos_apoio : [];
+    if (Array.isArray(apoios) && apoios.length > 0) {
+      apoios.forEach(function(item) {
+        if (item.tipo === 'texto') {
+          var p = document.createElement('div');
+          p.className = 'texto-apoio';
+          p.style.fontSize = '0.9em';
+          p.style.color = '#555';
+          p.innerHTML = item.conteudo || '';
+          div.appendChild(p);
+        } else if (item.tipo === 'imagem') {
+          var imgDiv = document.createElement('div');
+          imgDiv.className = 'imagem-container';
+          if (item.url && item.url.trim() !== '') {
+            var img = document.createElement('img');
+            img.src = item.url;
+            img.alt = item.descricao || 'Imagem';
+            imgDiv.appendChild(img);
+          }
+          div.appendChild(imgDiv);
+        }
+      });
+    }
+
+    // Comando completo
+    var comando = (q.conteudo && q.conteudo.comando) ? q.conteudo.comando : '';
+    if (comando.trim() !== '') {
+      var cmdDiv = document.createElement('div');
+      cmdDiv.className = 'comando-questao';
+      cmdDiv.innerHTML = comando;
+      div.appendChild(cmdDiv);
+    }
+
+    // Alternativas (somente com a resposta selecionada)
+    var alternativas = (q.conteudo && q.conteudo.alternativas) ? q.conteudo.alternativas : {};
+    var chavesAlt = Object.keys(alternativas);
+    var altsContainer = document.createElement('div');
+    altsContainer.className = 'alternativas-container';
+
+    chavesAlt.forEach(function(letra) {
+      var label = document.createElement('label');
+      label.className = 'alternativa';
+      label.style.cursor = 'pointer';
+      label.style.opacity = (respostas[q.id] && respostas[q.id].alternativa === letra) ? '1' : '0.7';
+
+      var radio = document.createElement('input');
+      radio.type = 'radio';
+      radio.name = 'revisao_' + q.id;
+      radio.value = letra;
+
+      if (respostas[q.id] && respostas[q.id].alternativa === letra) {
+        radio.checked = true;
+        label.style.fontWeight = 'bold';
+      }
+
+      // Permite alterar na revisão
+      radio.addEventListener('change', function() {
+        var tempoFinal = Date.now();
+        respostas[q.id] = {
+          alternativa: letra,
+          tempoInicio: respostas[q.id] ? respostas[q.id].tempoInicio : tempoFinal,
+          tempoFinal: tempoFinal
+        };
+        // Atualiza visualmente
+        document.querySelectorAll('#revisao-container .alternativa').forEach(function(el) {
+          el.style.opacity = '0.7';
+          el.style.fontWeight = 'normal';
+        });
+        label.style.opacity = '1';
+        label.style.fontWeight = 'bold';
+        atualizarContadorRevisao();
+      });
+
+      var circulo = document.createElement('span');
+      circulo.className = 'circulo-letra';
+      circulo.innerText = letra.toUpperCase();
+
+      var textoSpan = document.createElement('span');
+      textoSpan.innerHTML = alternativas[letra];
+
+      label.appendChild(radio);
+      label.appendChild(circulo);
+      label.appendChild(textoSpan);
+      altsContainer.appendChild(label);
+    });
+
+    div.appendChild(altsContainer);
+    container.appendChild(div);
+  });
+
+  atualizarContadorRevisao();
+  document.getElementById('btn-enviar').disabled = false;
+}
+
+function atualizarContadorRevisao() {
+  var respondidas = 0;
+  for (var i = 0; i < questoes.length; i++) {
+    if (respostas[questoes[i].id] && respostas[questoes[i].id].alternativa) respondidas++;
+  }
+  var status = document.getElementById('status-revisao');
+  if (respondidas === totalPerguntas) {
+    status.innerText = '✅ Todas as perguntas respondidas! Clique em "Enviar respostas".';
+    status.className = '';
+    status.style.display = 'block';
+    document.getElementById('btn-enviar').disabled = false;
+  } else {
+    status.innerText = '⚠️ Faltam ' + (totalPerguntas - respondidas) + ' pergunta(s) para responder.';
+    status.className = '';
+    status.style.display = 'block';
+    document.getElementById('btn-enviar').disabled = true;
+  }
+}
+
+// ============================================================
+// MÓDULO 6: ENVIO DAS RESPOSTAS
+// ============================================================
+document.getElementById('btn-enviar').addEventListener('click', function() {
+  // Verifica se todas foram respondidas
+  var todasRespondidas = true;
+  for (var i = 0; i < questoes.length; i++) {
+    if (!respostas[questoes[i].id] || !respostas[questoes[i].id].alternativa) {
+      todasRespondidas = false;
+      break;
+    }
+  }
+  if (!todasRespondidas) {
+    document.getElementById('status-revisao').innerText = '⚠️ Responda todas as perguntas antes de enviar.';
+    document.getElementById('status-revisao').style.display = 'block';
+    return;
+  }
+
+  // Calcula o tempo total de prova (em segundos)
+  var tempoTotalSegundos = Math.round((Date.now() - tempoInicioGlobal) / 1000);
+
+  // Monta array para salvar (uma linha por pergunta)
+  var respostasArray = [];
+  for (var j = 0; j < questoes.length; j++) {
+    var q = questoes[j];
+    var qId = q.id;
+    var resposta = respostas[qId];
+
+    var escolha = resposta ? resposta.alternativa : '';
+    var acertou = (escolha && escolha === q.gabarito) ? 1 : 0;
+
+    respostasArray.push({
+      idAluno: idAluno,
+      periodo: periodoSelecionado,
+      idPergunta: qId,
+      tema: q.tema || '',
+      tempoInicio: resposta ? resposta.tempoInicio : '',
+      tempoFinal: resposta ? resposta.tempoFinal : '',
+      resposta: escolha,
+      acertou: acertou,
+      gabarito: q.gabarito || ''
+    });
+  }
+
+  // Monta o objeto de envio com o tempo total
+  var dadosEnvio = {
+    respostas: respostasArray,
+    tempoTotal: tempoTotalSegundos,
+    periodo: periodoSelecionado,
+    idAluno: idAluno,
+    data: dataSimulado
+  };
+
+  document.getElementById('btn-enviar').disabled = true;
+  document.getElementById('status-revisao').innerText = 'Enviando...';
+  document.getElementById('status-revisao').style.display = 'block';
+
+  google.script.run
+    .withSuccessHandler(function(msg) {
+      document.getElementById('status-revisao').innerText = '✅ Respostas enviadas com sucesso!';
+      mostrarResultados();
+    })
+    .withFailureHandler(function(err) {
+      document.getElementById('status-revisao').innerText = 'Erro ao enviar: ' + (err.message || err);
+      document.getElementById('status-revisao').className = 'erro';
+      document.getElementById('btn-enviar').disabled = false;
+    })
+    .saveResponses(dadosEnvio); // <-- Envia o objeto com tempo total
+});
+
+// ============================================================
+// MÓDULO 7: RESULTADOS (FEEDBACK)
+// ============================================================
+function mostrarResultados() {
+  modo = 'resultados';
+  mostrarTela('tela-resultados');
+
+  // Calcula acertos
+  var totalAcertos = 0;
+  var detalhes = [];
+
+  questoes.forEach(function(q, index) {
+    var resposta = respostas[q.id];
+    var acertou = (resposta && resposta.alternativa === q.gabarito);
+    if (acertou) totalAcertos++;
+    detalhes.push({
+      index: index,
+      id: q.id,
+      gabarito: q.gabarito,
+      escolhida: resposta ? resposta.alternativa : null,
+      acertou: acertou,
+      comando: q.conteudo.comando || '',
+      alternativas: q.conteudo.alternativas || {}
+    });
+  });
+
+  // Resumo
+  var resumo = document.getElementById('resumo-resultados');
+  resumo.innerHTML = '<strong>' + totalAcertos + ' de ' + totalPerguntas + ' acertos</strong> (' + Math.round(totalAcertos/totalPerguntas*100) + '%)';
+
+  // Lista detalhada com perguntas completas
+  var container = document.getElementById('resultados-container');
+  container.innerHTML = '';
+
+  detalhes.forEach(function(d, idx) {
+    var div = document.createElement('div');
+    div.className = 'pergunta';
+    div.style.marginBottom = '30px';
+    div.style.borderLeft = d.acertou ? '6px solid #2e7d32' : '6px solid #c62828';
+    div.style.paddingLeft = '15px';
+
+    var header = document.createElement('div');
+    header.className = 'questao-header';
+    var numFormatado = (idx + 1) < 10 ? '0' + (idx + 1) : (idx + 1);
+    header.innerHTML = '<span class="questao-titulo">QUESTÃO ' + numFormatado + ' ' + (d.acertou ? '✅' : '❌') + '</span><div class="questao-linha"></div>';
+    div.appendChild(header);
+
+    // Comando completo
+    var cmdDiv = document.createElement('div');
+    cmdDiv.className = 'comando-questao';
+    cmdDiv.innerHTML = d.comando;
+    div.appendChild(cmdDiv);
+
+    // Mostra as alternativas com a escolhida e a correta
+    var chavesAlt = Object.keys(d.alternativas);
+    var altsContainer = document.createElement('div');
+    altsContainer.className = 'alternativas-container';
+
+    chavesAlt.forEach(function(letra) {
+      var label = document.createElement('div');
+      label.className = 'alternativa';
+      label.style.display = 'flex';
+      label.style.alignItems = 'flex-start';
+      label.style.margin = '5px 0';
+      label.style.padding = '6px 12px';
+      label.style.borderRadius = '4px';
+
+      // Define cor de fundo
+      var isEscolhida = (d.escolhida === letra);
+      var isCorreta = (d.gabarito === letra);
+
+      if (isEscolhida && d.acertou) {
+        label.style.background = '#e8f5e9'; // verde claro
+        label.style.border = '1px solid #2e7d32';
+      } else if (isEscolhida && !d.acertou) {
+        label.style.background = '#ffebee'; // vermelho claro
+        label.style.border = '1px solid #c62828';
+      } else if (isCorreta && !d.acertou) {
+        label.style.background = '#e3f2fd'; // azul claro (resposta correta)
+        label.style.border = '1px solid #1a73e8';
+      }
+
+      var circulo = document.createElement('span');
+      circulo.className = 'circulo-letra';
+      circulo.style.display = 'inline-flex';
+      circulo.style.alignItems = 'center';
+      circulo.style.justifyContent = 'center';
+      circulo.style.width = '22px';
+      circulo.style.height = '22px';
+      circulo.style.minWidth = '22px';
+      circulo.style.borderRadius = '50%';
+      circulo.style.background = '#000';
+      circulo.style.color = '#fff';
+      circulo.style.fontWeight = 'bold';
+      circulo.style.fontSize = '0.75em';
+      circulo.style.marginRight = '12px';
+      circulo.style.marginTop = '2px';
+      circulo.innerText = letra.toUpperCase();
+
+      var textoSpan = document.createElement('span');
+      textoSpan.innerHTML = d.alternativas[letra];
+
+      label.appendChild(circulo);
+      label.appendChild(textoSpan);
+      altsContainer.appendChild(label);
+    });
+
+    div.appendChild(altsContainer);
+
+    // Mostra qual era a resposta correta se errou
+    if (!d.acertou) {
+      var infoDiv = document.createElement('div');
+      infoDiv.style.marginTop = '8px';
+      infoDiv.style.fontSize = '0.95em';
+      infoDiv.style.color = '#1a73e8';
+      infoDiv.innerHTML = '✅ <strong>Resposta correta:</strong> ' + d.gabarito + ') ' + d.alternativas[d.gabarito];
+      div.appendChild(infoDiv);
+    }
+
+    container.appendChild(div);
+  });
+}
+
+// ============================================================
+// MÓDULO 8: REINICIAR
+// ============================================================
+document.getElementById('btn-reiniciar').addEventListener('click', function() {
+  // Limpa estado e volta para o TCLE
+  questoes = [];
+  respostas = {};
+  totalPerguntas = 0;
+  perguntaAtual = 0;
+  periodoSelecionado = '';
+  idAluno = '';
+  dataSimulado = '';
+  tempoInicioGlobal = null;
+  modo = 'perguntas';
+  mostrarTela('tela-termo');
+  document.getElementById('btn-iniciar').disabled = true;
+  document.getElementById('aceite').checked = false;
+  // Restaura o botão "Próxima" para o comportamento padrão
+  var btnProximo = document.getElementById('btn-proximo');
+  btnProximo.textContent = 'Próxima ▶';
+  btnProximo.onclick = function() {
+    if (perguntaAtual < totalPerguntas - 1) {
+      perguntaAtual++;
+      exibirPergunta(perguntaAtual);
+    }
+  };
+});
+
+// ============================================================
+// MÓDULO 9: FUNÇÕES AUXILIARES
+// ============================================================
+function mostrarErroTermo(mensagem) {
+  mostrarTela('tela-termo');
+  var divErro = document.getElementById('erro-termo');
+  divErro.innerText = mensagem;
+  divErro.style.display = 'block';
+}
+
+function mostrarTela(id) {
+  document.querySelectorAll('.tela').forEach(function(el) { el.classList.remove('ativa'); });
+  document.getElementById(id).classList.add('ativa');
+}
+
+function atualizarContador() {
+  var respondidas = 0;
+  for (var i = 0; i < questoes.length; i++) {
+    if (respostas[questoes[i].id] && respostas[questoes[i].id].alternativa) respondidas++;
+  }
+  var status = document.getElementById('status');
+  if (respondidas === totalPerguntas) {
+    status.innerText = '✅ Todas as perguntas respondidas! Clique em "Finalizar" para revisar.';
+    status.className = '';
+    status.style.display = 'block';
+  } else {
+    status.innerText = '⚠️ Respondidas: ' + respondidas + ' de ' + totalPerguntas;
+    status.className = '';
+    status.style.display = 'block';
+  }
+}
+</script>

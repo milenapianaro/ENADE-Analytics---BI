@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Questionário ENADE</title>
+  <?!= include('style'); ?>
+</head>
+<body>
+
+<div class="container-pagina">
+
+  <!-- ========================================================== -->
+  <!-- TELA 1: TERMO DE CONSENTIMENTO (TCLE)                       -->
+  <!-- ========================================================== -->
+  <div id="tela-termo" class="tela ativa">
+    <h2 style="font-family: Arial, sans-serif; border-bottom: 2px solid #000; padding-bottom: 8px; margin-top: 0;">
+      📋 PROJETO ENADE ANALYTICS — TERMO DE CONSENTIMENTO LIVRE E ESCLARECIDO (TCLE)
+    </h2>
+    <div id="termo" style="color: #333;">
+      <p><strong>Simulado de preparação para o ENADE 2026</strong></p>
+      <p>Você está sendo convidado(a) a participar, de forma voluntária, de um simulado preparatório para o ENADE 2026, desenvolvido no âmbito do projeto ENADE Analytics. Antes de aceitar, leia com atenção as informações abaixo:</p>
+      <p><strong>1. Do que se trata:</strong><br>
+      O simulado tem como objetivo identificar, de forma agregada e anônima, os eixos temáticos do componente específico do ENADE em que os estudantes apresentam mais dificuldade, permitindo direcionar ações de reforço antes da prova oficial do INEP.</p>
+      <p><strong>2. O que será coletado:</strong><br>
+      • Suas respostas às questões do simulado e tempo de resposta.<br>
+      • <strong>Não serão coletados seu nome, CPF, e-mail ou qualquer dado que permita identificá-lo(a) diretamente.</strong> Cada participante recebe um código anônimo.</p>
+      <p><strong>3. Como os dados serão usados:</strong><br>
+      • As respostas serão analisadas apenas de forma agregada (por turma e por eixo temático), nunca de forma individual.<br>
+      • Os resultados alimentam um dashboard entregue à coordenação do curso, para fins exclusivamente pedagógicos.<br>
+      • Em nenhuma hipótese os resultados deste simulado serão usados para aprovação, reprovação ou qualquer avaliação formal.<br>
+      • Este simulado não substitui o ENADE oficial do INEP.</p>
+      <p><strong>4. Seus direitos como participante:</strong><br>
+      • A participação é totalmente voluntária — você pode se recusar a participar ou desistir a qualquer momento, sem qualquer prejuízo.<br>
+      • O tratamento dos seus dados segue os princípios da Lei Geral de Proteção de Dados Pessoais (LGPD, Lei nº 13.709/2018): finalidade específica, minimização de dados e anonimização.</p>
+      <hr style="border: 0; border-top: 1px solid #ccc; margin: 20px 0;">
+      
+      <!-- CAMPO DE PERÍODO -->
+      <div style="margin: 15px 0;">
+        <label for="periodo"><strong>Período atual (obrigatório):</strong></label>
+        <select id="periodo" style="padding: 6px 12px; border-radius: 4px; border: 1px solid #ccc; font-size: 1em; background: #fff; margin-left: 10px;">
+          <option value="">Selecione</option>
+          <option value="1º período">1º período</option>
+          <option value="2º período">2º período</option>
+          <option value="3º período">3º período</option>
+          <option value="4º período">4º período</option>
+          <option value="5º período">5º período</option>
+          <option value="6º período">6º período</option>
+        </select>
+      </div>
+
+      <p><strong>5. Declaração de Consentimento:</strong></p>
+      <label style="cursor: pointer; display: block; margin-bottom: 8px;">
+        <input type="checkbox" id="aceite"> Declaro que li e compreendi as informações acima, concordo em participar voluntariamente e entendo que meus dados serão anonimizados e usados apenas de forma agregada.
+      </label>
+    </div>
+    <button class="btn" id="btn-iniciar" disabled style="margin-top: 15px;">ACEITAR E INICIAR</button>
+    <div id="erro-termo" style="color:red; margin-top:10px; display:none; font-family: Arial;"></div>
+  </div>
+
+  <!-- ========================================================== -->
+  <!-- TELA 2: CARREGANDO                                          -->
+  <!-- ========================================================== -->
+  <div id="tela-carregando" class="tela">
+    <div class="carregando">
+      <div class="spinner"></div>
+      <p>Carregando caderno de questões...</p>
+    </div>
+  </div>
+
+  <!-- ========================================================== -->
+  <!-- TELA 3: PERGUNTAS (UMA POR VEZ)                           -->
+  <!-- ========================================================== -->
+  <div id="tela-perguntas" class="tela">
+    <div id="pergunta-container"></div>
+    
+    <div class="nav-buttons" style="display: flex; justify-content: space-between; margin-top: 20px;">
+      <button class="btn btn-secondary" id="btn-anterior" style="display:none;">◀ Anterior</button>
+      <button class="btn" id="btn-proximo">Próxima ▶</button>
+    </div>
+    <div class="contador-geral" id="contador-pergunta"></div>
+    
+    <div id="status" style="margin-top: 15px;"></div>
+  </div>
+
+  <!-- ========================================================== -->
+  <!-- TELA 4: REVISÃO (TODAS AS PERGUNTAS)                      -->
+  <!-- ========================================================== -->
+  <div id="tela-revisao" class="tela">
+    <h2 style="font-family: Arial, sans-serif; border-bottom: 2px solid #000; padding-bottom: 8px;">📋 Revisão das respostas</h2>
+    <p style="color: #555;">Revise suas respostas. Você pode alterar qualquer alternativa antes de enviar.</p>
+    <div id="revisao-container"></div>
+    
+    <div style="text-align: center; margin-top: 30px;">
+      <button class="btn btn-secondary" id="btn-voltar-perguntas" style="margin-right: 10px;">◀ Voltar</button>
+      <button class="btn" id="btn-enviar" style="background: #1a73e8;">📤 Enviar respostas</button>
+    </div>
+    <div id="status-revisao" style="margin-top: 15px;"></div>
+  </div>
+
+  <!-- ========================================================== -->
+  <!-- TELA 5: RESULTADOS                                         -->
+  <!-- ========================================================== -->
+  <div id="tela-resultados" class="tela">
+    <h2 style="font-family: Arial, sans-serif; border-bottom: 2px solid #000; padding-bottom: 8px;">📊 Resultado do simulado</h2>
+    <div id="resumo-resultados" style="text-align: center; margin: 20px 0; font-size: 1.2em;"></div>
+    <div id="resultados-container"></div>
+    <div style="text-align: center; margin-top: 30px;">
+      <button class="btn btn-secondary" id="btn-reiniciar">🔄 Refazer simulado</button>
+    </div>
+  </div>
+
+</div>
+
+<?!= include('javascript'); ?>
+</body>
+</html>

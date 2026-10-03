@@ -82,7 +82,7 @@ ENADE-Analytics---BI/
 │   └── Diagrama DER.png
 │
 ├── 04. Dashboard/              # Arquivo do dashboard
-│   └── ENADE Analytics - Fogo e Dados.pbix (a ser incluído)
+│   └── ENADE Analytics - Fogo e Dados.pbix
 │
 └── README.md
 ```

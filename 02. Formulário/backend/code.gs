@@ -15,12 +15,12 @@
  * ID da planilha que contém as questões.
  * Obtido a partir da URL: https://docs.google.com/spreadsheets/d/ID_DA_PLANILHA/edit
  */
-var QUESTOES = '1SEWaEnt-_sa0m6MJP4cujWenr9GdWQCcTL1DS8Qw0ew';
+var QUESTOES = 'ID_DA_PLANILHA_DE_QUESTOES';
 
 /**
  * ID da planilha onde serão registradas as respostas.
  */
-var RESPOSTAS = '1JBPgo8hrJ9agKMONjiPjx7tVwrC5uYLi4xXfqz-1bms';
+var RESPOSTAS = 'ID_DA_PLANILHA_DE_RESPOSTAS';
 
 // ============================================================
 // MÓDULO 2: PONTO DE ENTRADA DO WEB APP

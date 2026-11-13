@@ -130,8 +130,7 @@ Os entregáveis do Projeto Integrador estão disponíveis na pasta `01. Document
 - [x] Desenvolvimento do Web App de simulado
 - [x] Coleta de dados em conformidade com a LGPD
 - [x] Modelagem dimensional (esquema estrela)
-- [ ] Dashboard interativo no Power BI
-- [ ] Testes de usabilidade com a coordenação
+- [x] Dashboard interativo no Power BI
 - [ ] Apresentação final
 
 ---

@@ -1,163 +1,182 @@
-# 📝 Formulário ENADE Analytics — Guia de Deploy
+# ENADE Analytics — Formulário (Web App)
 
-> Este guia descreve o passo a passo para publicar e manter o **Web App do simulado ENADE Analytics** no Google Apps Script, integrado às planilhas do Google Sheets.
+**Guia de implantação e manutenção do simulado no Google Apps Script.**
 
----
-
-## 📖 Sobre o formulário
-
-O formulário é um **Web App** desenvolvido em Google Apps Script que:
-
-- Exibe o **Termo de Consentimento Livre e Esclarecido (TCLE)** antes do simulado;
-- Coleta o **período** do aluno (1º a 6º);
-- Apresenta as questões **uma por vez**, com navegação Anterior/Próxima;
-- Permite **revisão** das respostas antes do envio;
-- Exibe **feedback** com total de acertos e correção visual (cores);
-- Registra **tempo por pergunta** e **tempo total** de prova;
-- Salva as respostas em uma planilha do Google Sheets, em conformidade com a LGPD.
+Este documento descreve como publicar, atualizar e testar o Web App do simulado ENADE Analytics, integrado às planilhas do Google Sheets.
 
 ---
 
-## ✅ Pré-requisitos
+## Sumário
 
-Antes de começar, você precisará de:
+- [Visão geral](#visão-geral)
+- [Pré-requisitos](#pré-requisitos)
+- [Implantação](#implantação)
+- [Atualização do Web App](#atualização-do-web-app)
+- [Testes](#testes)
+- [Solução de problemas](#solução-de-problemas)
+- [Referências](#referências)
 
-- Uma conta Google (Gmail ou institucional);
-- Acesso ao [Google Apps Script](https://script.google.com);
+---
+
+## Visão geral
+
+O formulário é um Web App desenvolvido em Google Apps Script que:
+
+- exibe o **Termo de Consentimento Livre e Esclarecido (TCLE)** antes do início do simulado;
+- coleta o **período** do aluno (1º ao 6º);
+- apresenta as questões **uma por vez**, com navegação Anterior/Próxima;
+- permite a **revisão** das respostas antes do envio;
+- exibe o **feedback** com o total de acertos e a correção visual por cores;
+- registra o **tempo por questão** e o **tempo total** de prova;
+- grava as respostas em uma planilha do Google Sheets, seguindo os princípios da LGPD.
+
+---
+
+## Pré-requisitos
+
+- Uma conta Google (pessoal ou institucional).
+- Acesso ao [Google Apps Script](https://script.google.com).
 - Duas planilhas no Google Sheets:
-  - **Planilha de Questões** — contém a aba `Questões` com todas as perguntas;
-  - **Planilha de Respostas** — onde as respostas dos alunos serão salvas.
-- Os arquivos desta pasta (`code.gs`, `index.html`, `style.html`, `javascript.html`).
+  - **Planilha de Questões:** contém a aba `Questões` com todas as perguntas.
+  - **Planilha de Respostas:** onde as respostas dos alunos serão gravadas.
+- Os arquivos do projeto, disponíveis nesta pasta:
+
+| Arquivo | Local |
+|---------|-------|
+| `code.gs` | `backend/` |
+| `index.html` | `frontend/` |
+| `style.html` | `frontend/` |
+| `javascript.html` | `frontend/` |
 
 ---
 
-## 🚀 Passo a passo para o deploy
+## Implantação
 
 ### 1. Criar o projeto no Apps Script
 
 1. Acesse [script.google.com](https://script.google.com) e clique em **Novo projeto**.
-2. Renomeie o projeto para algo como `ENADE Analytics — Formulário`.
+2. Renomeie o projeto, por exemplo, para `ENADE Analytics — Formulário`.
 
 ### 2. Adicionar os arquivos ao projeto
 
-No editor do Apps Script, crie os seguintes arquivos:
+No editor, crie os arquivos abaixo e cole o conteúdo correspondente:
 
-| Arquivo no editor | Conteúdo a colar |
-|-------------------|------------------|
-| `Código.gs` (já existe) | Conteúdo de `backend/code.gs` |
-| `index.html` | Conteúdo de `frontend/index.html` |
-| `style.html` | Conteúdo de `frontend/style.html` |
-| `javascript.html` | Conteúdo de `frontend/javascript.html` |
+| Arquivo no editor | Conteúdo |
+|-------------------|----------|
+| `Código.gs` (já existe) | `backend/code.gs` |
+| `index` | `frontend/index.html` |
+| `style` | `frontend/style.html` |
+| `javascript` | `frontend/javascript.html` |
 
-> ⚠️ **Atenção:** o nome do arquivo HTML no editor deve ser **exatamente** `index`, `style` e `javascript`, sem a extensão `.html`. O Apps Script adiciona a extensão automaticamente.
+> [!IMPORTANT]
+> Os arquivos HTML devem se chamar exatamente `index`, `style` e `javascript`, **sem** a extensão `.html`. O Apps Script a adiciona automaticamente.
 
 ### 3. Configurar os IDs das planilhas
 
-No arquivo `Código.gs`, localize as variáveis globais:
+No arquivo `Código.gs`, localize as variáveis globais e substitua os valores pelos IDs das suas planilhas:
 
 ```javascript
-var QUESTOES = 'ID_DA_PLANILHA_DE_QUESTOES';
+var QUESTOES  = 'ID_DA_PLANILHA_DE_QUESTOES';
 var RESPOSTAS = 'ID_DA_PLANILHA_DE_RESPOSTAS';
 ```
 
-Substitua pelos IDs reais das suas planilhas. O ID é a parte da URL entre `/d/` e `/edit`:
+O ID é o trecho da URL da planilha entre `/d/` e `/edit`:
 
-```
-https://docs.google.com/spreadsheets/d/1SEWaEnt-_sa0m6MJP4cujWenr9GdWQCcTL1DS8Qw0ew/edit
-                                      └────────────── ID ──────────────┘
+```text
+https://docs.google.com/spreadsheets/d/<ID_DA_PLANILHA>/edit
 ```
 
 ### 4. Verificar os nomes das abas
 
-Certifique-se de que as abas nas planilhas têm exatamente estes nomes:
+Confirme que as abas têm exatamente os nomes abaixo (o script diferencia maiúsculas, minúsculas e acentos):
 
-- Na planilha de questões: **`Questões`**
-- Na planilha de respostas: **`Respostas`**
+| Planilha | Aba |
+|----------|-----|
+| Questões | `Questões` |
+| Respostas | `Respostas` |
 
-Se a aba `Respostas` não existir, o script a criará automaticamente na primeira execução.
+Caso a aba `Respostas` não exista, o script a cria automaticamente na primeira execução.
 
-### 5. Compartilhar as planilhas
+### 5. Definir o acesso às planilhas
 
-Como o Web App será acessado por pessoas anônimas (sem login), as planilhas precisam estar compartilhadas:
+Como a implantação será configurada com **Executar como: Eu**, o script acessa as planilhas com as permissões do proprietário do projeto. Por isso, **os alunos não precisam de acesso direto às planilhas** e elas devem permanecer **restritas**.
 
-1. Abra cada planilha no Google Sheets.
-2. Clique em **Compartilhar**.
-3. Em **Acesso geral**, selecione **"Qualquer pessoa com o link"**.
-4. Defina a permissão como **Leitor** (para a planilha de questões) e **Editor** (para a de respostas).
-5. Clique em **Concluído**.
+Basta garantir que a conta que implanta o Web App seja proprietária (ou editora) das duas planilhas.
+
+> [!WARNING]
+> Evite compartilhar a planilha de respostas como "Qualquer pessoa com o link". Isso permitiria que qualquer pessoa com o endereço visse ou alterasse os registros, o que enfraquece a proteção dos dados prevista no projeto.
 
 ### 6. Publicar o Web App
 
-1. No editor do Apps Script, clique em **Implantar** → **Nova implantação**.
-2. Clique no ícone de engrenagem → **Aplicativo da web**.
-3. Preencha:
+1. No editor, clique em **Implantar** → **Nova implantação**.
+2. Clique no ícone de engrenagem e escolha **Aplicativo da web**.
+3. Preencha os campos:
    - **Descrição:** `Versão inicial do formulário`
    - **Executar como:** `Eu (seu e-mail)`
    - **Quem pode acessar:** `Qualquer pessoa`
 4. Clique em **Implantar**.
-5. Autorize o script (o Google pedirá permissão para acessar as planilhas).
-6. **Copie a URL do Web App** gerada.
-
-> 🔗 Essa URL é o link que os alunos usarão para acessar o simulado.
+5. Autorize o script quando o Google solicitar acesso às planilhas.
+6. Copie a **URL do Web App**. Ela é o link que será distribuído aos alunos.
 
 ---
 
-## 🔄 Como atualizar o Web App (sem mudar o link)
+## Atualização do Web App
 
-Sempre que você alterar o código e quiser publicar as mudanças:
+Para publicar alterações de código **mantendo o mesmo link**:
 
-1. Salve o projeto (Ctrl+S).
-2. Vá em **Implantar** → **Gerenciar implantações**.
-3. Clique no **ícone de lápis** (editar) da implantação existente.
+1. Salve o projeto (`Ctrl+S`).
+2. Acesse **Implantar** → **Gerenciar implantações**.
+3. Clique no ícone de **lápis** da implantação existente.
 4. Em **Versão**, selecione **Nova versão**.
-5. Digite uma descrição (ex: `Adiciona coluna Data`).
+5. Adicione uma descrição (por exemplo, `Adiciona coluna Data`).
 6. Clique em **Implantar**.
 
-✅ **A URL permanece a mesma.** Os alunos não precisam de um novo link.
+A URL permanece a mesma, e os alunos não precisam de um novo link.
 
-> ⚠️ **Não clique em "Nova implantação"** — isso gera uma URL diferente.
+> [!CAUTION]
+> Não use **Nova implantação** para atualizar o código. Essa opção gera uma URL diferente e deixa o link anterior desatualizado.
 
 ---
 
-## 🧪 Como testar o formulário
+## Testes
 
-1. Acesse a URL do Web App em uma **janela anônima** do navegador.
+1. Abra a URL do Web App em uma **janela anônima** do navegador.
 2. Aceite o TCLE, selecione o período e inicie o simulado.
-3. Responda as questões, revise e envie.
+3. Responda às questões, revise e envie.
 4. Verifique se:
-   - O feedback de acertos aparece;
-   - As respostas foram salvas na planilha `Respostas` com as colunas corretas.
+   - o feedback de acertos é exibido;
+   - as respostas foram gravadas na aba `Respostas` com as colunas corretas.
 
 ---
 
-## ⚠️ Problemas comuns e soluções
+## Solução de problemas
 
-### 1. Erro "Cannot read properties of null (reading 'getSheetByName')"
+### Erro `Cannot read properties of null (reading 'getSheetByName')`
 
-**Causa:** o script não está conseguindo acessar a planilha.
-**Solução:** verifique se o `ID_PLANILHA` está correto e se as planilhas estão compartilhadas como "Qualquer pessoa com o link".
+- **Causa:** o script não conseguiu abrir a planilha.
+- **Solução:** confira se os IDs em `QUESTOES` e `RESPOSTAS` estão corretos e se a conta que implantou o Web App tem acesso às duas planilhas.
 
-### 2. Erro de acesso para usuários logados em múltiplas contas Google
+### Erro de acesso para usuários com várias contas Google
 
-**Causa:** o Google Apps Script **não suporta múltiplas contas logadas simultaneamente** no mesmo navegador.
-**Solução:** oriente o usuário a:
-- Usar uma **janela anônima**; ou
-- Fazer **logout de todas as contas** e logar apenas na conta desejada; ou
-- Criar um **perfil separado** no navegador.
+- **Causa:** o Apps Script não funciona de forma confiável com várias contas Google logadas ao mesmo tempo no navegador.
+- **Solução:** oriente o usuário a:
+  - usar uma **janela anônima**; ou
+  - sair de todas as contas e entrar apenas em uma; ou
+  - criar um **perfil separado** no navegador.
 
-### 3. As respostas não estão sendo salvas na planilha
+### Respostas não são gravadas na planilha
 
-**Causa:** a planilha de respostas não está compartilhada com permissão de **edição**.
-**Solução:** abra a planilha, vá em **Compartilhar** e altere o acesso para **Editor** (para "Qualquer pessoa com o link").
+- **Causa provável:** a conta que implantou o Web App não tem permissão de edição na planilha de respostas, ou o nome da aba está diferente de `Respostas`.
+- **Solução:** verifique a permissão do proprietário da implantação e o nome da aba. Se o código foi alterado recentemente, confirme que uma **nova versão** foi implantada (ver [Atualização do Web App](#atualização-do-web-app)).
 
-### 4. O link do Web App parou de funcionar
+### O link do Web App parou de funcionar
 
-**Causa:** uma nova implantação foi criada (em vez de atualizar a existente), gerando uma nova URL.
-**Solução:** acesse **Implantar** → **Gerenciar implantações** e copie a URL atual. Envie o novo link para os usuários.
+- **Causa:** foi criada uma nova implantação em vez de atualizar a existente, o que gerou uma nova URL.
+- **Solução:** acesse **Implantar** → **Gerenciar implantações**, copie a URL vigente e redistribua o link aos usuários.
 
 ---
 
-## 📚 Referências
+## Referências
 
-- [Documentação oficial do Apps Script](https://developers.google.com/apps-script)
+- [Documentação oficial do Google Apps Script](https://developers.google.com/apps-script)
 - [Guia de Web Apps](https://developers.google.com/apps-script/guides/web)
